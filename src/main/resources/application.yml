@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: deokhugam-api
+    version: 1.0.0
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 300MB
+  profiles:
+    active: dev   # dev, prod 선택 가능
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+#        default_batch_fetch_size: 100
+        format_sql: true
+        highlight_sql: true
+        use_sql_comments: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+        jdbc.time_zone: UTC
+    open-in-view: false
+
+  # Spring Boot Admin Client
+  boot:
+    admin:
+      client:
+        url: http://localhost:9090
+        instance:
+          name: deokhugam-api
+          service-url: http://localhost:8080
+          management-base-url: http://localhost:8080
+        enabled: false
+
+  sql:
+    init:
+      encoding: UTF-8
+
+# swagger
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    display-request-duration: true
+    persist-authorization: true
+
+# log
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: off
+    org.hibernate.orm.jdbc.bind: trace
+    org.hibernate.type.descriptor.sql: trace
+    org.springframework.web: trace
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+# actuator info 노출
+info:
+  app:
+    name: ${spring.application.name}
+    version: ${spring.application.version:1.0.0}
+  runtime:
+    profile: ${spring.profiles.active}
+    java: ${java.runtime.version}
+
+# Actuator 노출 범위
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,env,threaddump,heapdump,users
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true   # liveness/readiness
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+    build:
+      enabled: true
+
+myblog:
+  storage:
+    local:
+      root-path: .blog/storage  # dev 로컬 파일 저장 루트 (프로젝트 루트 기준)

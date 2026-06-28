@@ -1,0 +1,47 @@
+services:
+
+  mongodb:
+    image: mongo:8
+    container_name: deokhugam-mongodb
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - mongo_data:/data/db
+
+    restart: always
+
+  deokhugam-api:
+    container_name: deokhugam-api
+    build: .
+
+    depends_on:
+      - mongodb
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      MONGO_USERNAME: deokhugam
+      MONGO_PASSWORD: 1234
+
+    restart: always
+
+volumes:
+  mongo_data:
+# 사용법:
+#   docker-compose build
+#   docker-compose up -d

@@ -1,0 +1,110 @@
+# =========================
+# IntelliJ IDEA
+# =========================
+.idea/
+*.iml
+*.iws
+out/
+
+# 공유할 설정
+!.idea/codeStyles
+!.idea/runConfigurations
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# Gradle
+# =========================
+.gradle/
+build/
+**/build/
+!src/**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+
+# =========================
+# Java
+# =========================
+*.class
+*.jar
+*.war
+*.ear
+*.hprof
+
+# =========================
+# Environment
+# =========================
+.env
+
+# =========================
+# Logs
+# =========================
+.logs/
+logs/
+*.log
+*.log.*
+hs_err_pid*
+replay_pid*
+
+# =========================
+# Upload / Local Storage
+# =========================
+uploads/
+.blog/
+my_dir/
+
+# =========================
+# macOS
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+*.icloud
+
+# =========================
+# Windows
+# =========================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# =========================
+# Eclipse
+# =========================
+.project
+.classpath
+
+# =========================
+# Temporary
+# =========================
+*.swp
+*.swo
+*~

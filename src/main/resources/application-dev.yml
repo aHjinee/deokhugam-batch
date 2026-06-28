@@ -1,0 +1,46 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/deokugam
+    username: user1
+    password: 1234
+
+  data:
+    mongodb:
+      uri: mongodb://local:local1234@localhost:27017/deokhugam?authSource=admin
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
+      schema-locations: classpath:schema.sql, classpath:schema_batch.sql
+      data-locations: classpath:data.sql
+
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+    org.hibernate.type.descriptor.sql: trace
+    org.springframework.web: trace
+    com.sbproject.deokhugam: trace
+
+server:
+  port: 8081
