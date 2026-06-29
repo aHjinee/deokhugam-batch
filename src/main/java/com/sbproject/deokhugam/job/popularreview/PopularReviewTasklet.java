@@ -73,7 +73,7 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 				LEFT JOIN comments c ON c.review_id = r.id
 					AND c.created_at >= ? AND c.created_at < ?
 				WHERE r.deleted_at IS NULL
-				GROUP BY r.id, r.user_id, r.book_id, u.nickname, b.title, b.thumbnail_url, r.content, r.rating
+				GROUP BY r.id, r.user_id, r.book_id, u.nickname, b.title, b.thumbnail_url, r.content, r.rating, r.created_at
 				HAVING (COUNT(DISTINCT rl.id) * 0.3 + COUNT(DISTINCT c.id) * 0.7) > 0
 				ORDER BY (COUNT(DISTINCT rl.id) * 0.3 + COUNT(DISTINCT c.id) * 0.7) DESC
 				LIMIT 20
