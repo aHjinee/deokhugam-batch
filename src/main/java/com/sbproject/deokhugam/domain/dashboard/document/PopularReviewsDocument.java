@@ -4,6 +4,7 @@ import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -12,6 +13,7 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
+@TypeAlias("popular_reviews")
 @Document(collection = "popular_reviews")
 public class PopularReviewsDocument {
 
@@ -32,7 +34,23 @@ public class PopularReviewsDocument {
   @Field("updated_at")
   private Instant updatedAt;
 
+  public static PopularReviewsDocument create(PeriodType periodType, Instant periodDate, List<Ranking> rankings, Instant now) {
+  	PopularReviewsDocument doc = new PopularReviewsDocument();
+  	doc.periodType = periodType;
+  	doc.periodDate = periodDate;
+  	doc.rankings = rankings;
+  	doc.createdAt = now;
+  	doc.updatedAt = now;
+  	return doc;
+  }
+
+  public void update(List<Ranking> rankings, Instant now) {
+  	this.rankings = rankings;
+  	this.updatedAt = now;
+  }
+
   @Getter
+  @NoArgsConstructor
   public static class Ranking {
     private int rank;
 
@@ -60,5 +78,29 @@ public class PopularReviewsDocument {
 
     @Field("comment_count")
     private int commentCount;
+
+	@Field("created_at")
+	private Instant createdAt;
+
+
+	public Ranking(int rank, String reviewId, String userId, String bookId,
+		String nickname, String title, String thumbnailUrl,
+		String content, double rating, double score,
+		int likeCount, int commentCount, Instant createdAt) {
+		this.rank = rank;
+		this.reviewId = reviewId;
+		this.userId = userId;
+		this.bookId = bookId;
+		this.nickname = nickname;
+		this.title = title;
+		this.thumbnailUrl = thumbnailUrl;
+		this.content = content;
+		this.rating = rating;
+		this.score = score;
+		this.likeCount = likeCount;
+		this.commentCount = commentCount;
+		this.createdAt = createdAt;
+	}
   }
 }
+
