@@ -62,6 +62,7 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 					b.thumbnail_url,
 					r.content,
 					r.rating,
+					r.created_at,
 					COUNT(DISTINCT rl.id) AS like_count,
 					COUNT(DISTINCT c.id) AS comment_count
 				FROM reviews r
@@ -103,7 +104,8 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 					((Number) row.get("rating")).doubleValue(),
 					score,
 					(int) likeCount,
-					(int) commentCount
+					(int) commentCount,
+					((Timestamp) row.get("created_at")).toInstant()
 				));
 			}
 

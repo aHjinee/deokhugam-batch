@@ -79,11 +79,14 @@ public class PopularReviewsDocument {
     @Field("comment_count")
     private int commentCount;
 
+	@Field("created_at")
+	private Instant createdAt;
+
 
 	public Ranking(int rank, String reviewId, String userId, String bookId,
 		String nickname, String title, String thumbnailUrl,
 		String content, double rating, double score,
-		int likeCount, int commentCount) {
+		int likeCount, int commentCount, Instant createdAt) {
 		this.rank = rank;
 		this.reviewId = reviewId;
 		this.userId = userId;
@@ -96,6 +99,7 @@ public class PopularReviewsDocument {
 		this.score = score;
 		this.likeCount = likeCount;
 		this.commentCount = commentCount;
+		this.createdAt = createdAt;
 	}
   }
 }
