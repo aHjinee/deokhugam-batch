@@ -124,6 +124,9 @@ public class PowerUserTasklet implements Tasklet, StepExecutionListener {
 
 			// 점수 내림차순 정렬 후 순위 부여
 			rankings.sort((a, b) -> Double.compare(b.getActivityScore(), a.getActivityScore()));
+			// 스코어 0 이하 제거
+			rankings.removeIf(r -> r.getActivityScore() <= 0);
+
 			for (int i = 0; i < rankings.size(); i++) {
 				rankings.set(i, new PowerUsersDocument.Ranking(
 					i + 1,

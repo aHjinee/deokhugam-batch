@@ -64,6 +64,7 @@ public class PopularBookTasklet implements Tasklet, StepExecutionListener {
 					AND r.created_at >= ? AND r.created_at < ?
 				WHERE b.deleted_at IS NULL
 				GROUP BY b.id, b.title, b.author, b.thumbnail_url
+				HAVING (COUNT(DISTINCT r.id) * 0.4 + COALESCE(AVG(r.rating), 0) * 0.6) > 0
 				ORDER BY (COUNT(DISTINCT r.id) * 0.4 + COALESCE(AVG(r.rating), 0) * 0.6) DESC
 				LIMIT 10
 				""",
