@@ -16,8 +16,7 @@ spring:
     init:
       mode: always
       continue-on-error: true
-      schema-locations: classpath:schema.sql, classpath:schema_batch.sql
-      data-locations: classpath:data.sql
+      schema-locations: classpath:schema_batch.sql
 
   batch:
     jdbc:

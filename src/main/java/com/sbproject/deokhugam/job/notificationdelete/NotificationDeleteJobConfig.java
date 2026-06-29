@@ -1,4 +1,4 @@
-package com.sbproject.deokhugam.job.deletenotification;
+package com.sbproject.deokhugam.job.notificationdelete;
 
 
 import com.sbproject.deokhugam.domain.notification.service.NotificationService;
