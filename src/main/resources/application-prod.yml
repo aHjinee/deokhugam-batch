@@ -26,10 +26,7 @@ spring:
       mode: always
       continue-on-error: true
       schema-locations:
-        - classpath:schema.sql
         - classpath:schema_batch.sql
-      data-locations:
-        - classpath:data.sql
 
   batch:
     jdbc:
