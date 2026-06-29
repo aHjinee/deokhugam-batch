@@ -18,13 +18,16 @@ public class BatchScheduler {
 
     private final JobLauncher jobLauncher;
     private final Job notificationDeleteJob;
+	private final Job rankingJob;
 
     public BatchScheduler(
             JobLauncher jobLauncher,
-            @Qualifier("notificationDeleteJob") Job notificationDeleteJob) {
+            @Qualifier("notificationDeleteJob") Job notificationDeleteJob,
+			@Qualifier("rankingJob") Job rankingJob) {
 
         this.jobLauncher = jobLauncher;
         this.notificationDeleteJob = notificationDeleteJob;
+		this.rankingJob = rankingJob;
 
     }
 
@@ -51,4 +54,17 @@ public class BatchScheduler {
             log.error("NotificationDeleteJob failed.", e);
         }
     }
+
+	@Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
+	public void runRankingJob() {
+		try {
+			JobParameters parameters = new JobParametersBuilder()
+				.addLong("timestamp", System.currentTimeMillis())
+				.toJobParameters();
+			jobLauncher.run(rankingJob, parameters);
+			log.info("RankingJob completed.");
+		} catch (Exception e) {
+			log.error("RankingJob failed.", e);
+		}
+	}
 }
