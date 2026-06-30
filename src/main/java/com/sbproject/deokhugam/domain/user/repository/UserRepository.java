@@ -18,4 +18,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Modifying
     @Query(value = "DELETE FROM users WHERE id = :userId", nativeQuery = true)
     void hardDeleteById(@Param("userId") UUID userId);
+
+    @Modifying
+    @Query(value = "DELETE FROM users WHERE deleted_at IS NOT NULL AND deleted_at < :threshold", nativeQuery = true)
+    int deleteExpiredUsers(@Param("threshold") java.time.Instant threshold);
 }
