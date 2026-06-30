@@ -2,16 +2,15 @@ package com.sbproject.deokhugam.job.poweruser;
 
 import com.sbproject.deokhugam.domain.dashboard.document.PopularReviewsDocument;
 import com.sbproject.deokhugam.domain.dashboard.document.PowerUsersDocument;
+import com.sbproject.deokhugam.domain.dashboard.document.UserActivityStatsDocument;
 import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 import com.sbproject.deokhugam.domain.dashboard.repository.PopularReviewsRepository;
 import com.sbproject.deokhugam.domain.dashboard.repository.PowerUsersRepository;
+import com.sbproject.deokhugam.domain.dashboard.repository.UserActivityStatsRepository;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -27,37 +26,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class PowerUserTasklet implements Tasklet, StepExecutionListener {
+public class PowerUserTasklet implements Tasklet {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final JdbcTemplate jdbcTemplate;
 	private final PowerUsersRepository powerUsersRepository;
 	private final PopularReviewsRepository popularReviewsRepository;
+	private final UserActivityStatsRepository userActivityStatsRepository;
+	private final BatchMetrics batchMetrics;
 
 	@Override
-	public void beforeStep(StepExecution stepExecution) {
-		log.info("[PowerUserTasklet] beforeStep");
-	}
-
-	@Override
-	public @Nullable RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-		LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+	public RepeatStatus execute(
+		StepContribution contribution,
+		ChunkContext chunkContext
+	) {
+		LocalDate today = LocalDate.now(SEOUL_ZONE);
+		Instant periodDate = today.atStartOfDay(SEOUL_ZONE).toInstant();
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
 			Instant endAt = today.plusDays(1)
-				.atStartOfDay(ZoneId.of("Asia/Seoul"))
+				.atStartOfDay(SEOUL_ZONE)
 				.toInstant();
 
 			Timestamp startTimestamp = Timestamp.from(startAt);
 			Timestamp endTimestamp = Timestamp.from(endAt);
 
-			// MongoDB에서 해당 기간 인기 리뷰 점수 Map 만들기 (reviewId -> score)
 			Map<String, Double> reviewScoreMap = popularReviewsRepository
 				.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
-				.map(doc -> doc.getRankings().stream()
+				.map(document -> document.getRankings()
+					.stream()
 					.collect(Collectors.toMap(
 						PopularReviewsDocument.Ranking::getReviewId,
 						PopularReviewsDocument.Ranking::getScore
@@ -65,7 +66,6 @@ public class PowerUserTasklet implements Tasklet, StepExecutionListener {
 				)
 				.orElse(Map.of());
 
-			// PostgreSQL에서 유저별 좋아요/댓글 집계
 			List<Map<String, Object>> rows = jdbcTemplate.queryForList(
 				"""
 				SELECT
@@ -74,16 +74,24 @@ public class PowerUserTasklet implements Tasklet, StepExecutionListener {
 					COUNT(DISTINCT rl.id) AS like_count,
 					COUNT(DISTINCT c.id) AS comment_count,
 					COALESCE(
-						(SELECT STRING_AGG(r.id::text, ',')
-						 FROM reviews r
-						 WHERE r.user_id = u.id
-						 AND r.created_at >= ? AND r.created_at < ?), ''
+						(
+							SELECT STRING_AGG(r.id::text, ',')
+							FROM reviews r
+							WHERE r.user_id = u.id
+								AND r.created_at >= ?
+								AND r.created_at < ?
+						),
+						''
 					) AS review_ids
 				FROM users u
-				LEFT JOIN review_likes rl ON rl.user_id = u.id
-					AND rl.created_at >= ? AND rl.created_at < ?
-				LEFT JOIN comments c ON c.user_id = u.id
-					AND c.created_at >= ? AND c.created_at < ?
+				LEFT JOIN review_likes rl
+					ON rl.user_id = u.id
+					AND rl.created_at >= ?
+					AND rl.created_at < ?
+				LEFT JOIN comments c
+					ON c.user_id = u.id
+					AND c.created_at >= ?
+					AND c.created_at < ?
 				WHERE u.deleted_at IS NULL
 				GROUP BY u.id, u.nickname
 				""",
@@ -95,84 +103,168 @@ public class PowerUserTasklet implements Tasklet, StepExecutionListener {
 				endTimestamp
 			);
 
-			// 점수 계산
 			List<PowerUsersDocument.Ranking> rankings = new ArrayList<>();
+
 			for (Map<String, Object> row : rows) {
-				long likeCount = ((Number) row.get("like_count")).longValue();
-				long commentCount = ((Number) row.get("comment_count")).longValue();
+				long likeCount =
+					((Number) row.get("like_count")).longValue();
+
+				long commentCount =
+					((Number) row.get("comment_count")).longValue();
+
 				String reviewIds = row.get("review_ids").toString();
 
-				// 해당 유저의 리뷰 점수 합산
 				double reviewScore = 0;
+
 				if (!reviewIds.isBlank()) {
 					for (String reviewId : reviewIds.split(",")) {
-						reviewScore += reviewScoreMap.getOrDefault(reviewId.trim(), 0.0);
+						reviewScore += reviewScoreMap.getOrDefault(
+							reviewId.trim(),
+							0.0
+						);
 					}
 				}
 
-				double activityScore = reviewScore * 0.5 + likeCount * 0.2 + commentCount * 0.3;
-				rankings.add(new PowerUsersDocument.Ranking(
-					0, // 순위는 나중에
-					row.get("user_id").toString(),
-					row.get("nickname").toString(),
-					activityScore,
-					reviewScore,
-					(int) likeCount,
-					(int) commentCount
-				));
+				double activityScore =
+					reviewScore * 0.5
+						+ likeCount * 0.2
+						+ commentCount * 0.3;
+
+				rankings.add(
+					new PowerUsersDocument.Ranking(
+						0,
+						row.get("user_id").toString(),
+						row.get("nickname").toString(),
+						activityScore,
+						reviewScore,
+						(int) likeCount,
+						(int) commentCount
+					)
+				);
 			}
 
-			// 점수 내림차순 정렬 후 순위 부여
-			rankings.sort((a, b) -> Double.compare(b.getActivityScore(), a.getActivityScore()));
-			// 스코어 0 이하 제거
-			rankings.removeIf(r -> r.getActivityScore() <= 0);
+			rankings.removeIf(
+				ranking -> ranking.getActivityScore() <= 0
+			);
+
+			rankings.sort(
+				(first, second) -> Double.compare(
+					second.getActivityScore(),
+					first.getActivityScore()
+				)
+			);
 
 			for (int i = 0; i < rankings.size(); i++) {
-				rankings.set(i, new PowerUsersDocument.Ranking(
-					i + 1,
-					rankings.get(i).getUserId(),
-					rankings.get(i).getNickname(),
-					rankings.get(i).getActivityScore(),
-					rankings.get(i).getReviewScore(),
-					rankings.get(i).getLikeCount(),
-					rankings.get(i).getCommentCount()
-				));
+				PowerUsersDocument.Ranking ranking = rankings.get(i);
+
+				rankings.set(
+					i,
+					new PowerUsersDocument.Ranking(
+						i + 1,
+						ranking.getUserId(),
+						ranking.getNickname(),
+						ranking.getActivityScore(),
+						ranking.getReviewScore(),
+						ranking.getLikeCount(),
+						ranking.getCommentCount()
+					)
+				);
 			}
 
-			// 상위 10개만
-			List<PowerUsersDocument.Ranking> top10 = rankings.stream().limit(10).toList();
-
 			Instant now = Instant.now();
-			powerUsersRepository.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
+			int updatedActivityStatsCount = 0;
+
+			if (periodType == PeriodType.DAILY) {
+				updatedActivityStatsCount = updateDailyPowerRanks(
+					rankings,
+					periodDate,
+					now
+				);
+			}
+
+			List<PowerUsersDocument.Ranking> top10 = rankings
+				.stream()
+				.limit(10)
+				.toList();
+
+			powerUsersRepository
+				.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
 				.ifPresentOrElse(
-					doc -> {
-						doc.update(top10, now);
-						powerUsersRepository.save(doc);
+					document -> {
+						document.update(top10, now);
+						powerUsersRepository.save(document);
 					},
 					() -> powerUsersRepository.save(
-						PowerUsersDocument.create(periodType, today.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), top10, now)
+						PowerUsersDocument.create(
+							periodType,
+							periodDate,
+							top10,
+							now
+						)
 					)
 				);
 
-			log.info("[PowerUserTasklet] {} 완료, {}건", periodType, top10.size());
+			batchMetrics.recordProcessedItems(
+				"powerUser",
+				periodType.name(),
+				top10.size()
+			);
+
 		}
 
 		return RepeatStatus.FINISHED;
 	}
 
-	@Override
-	public ExitStatus afterStep(StepExecution stepExecution) {
-		log.info("[PowerUserTasklet] afterStep");
-		return ExitStatus.COMPLETED;
-	}
-
-	private Instant getStartAt(PeriodType periodType, LocalDate today) {
-		ZoneId zone = ZoneId.of("Asia/Seoul");
+	private Instant getStartAt(
+		PeriodType periodType,
+		LocalDate today
+	) {
 		return switch (periodType) {
-			case DAILY -> today.atStartOfDay(zone).toInstant();
-			case WEEKLY -> today.minusWeeks(1).atStartOfDay(zone).toInstant();
-			case MONTHLY -> today.minusMonths(1).atStartOfDay(zone).toInstant();
+			case DAILY ->
+				today.atStartOfDay(SEOUL_ZONE).toInstant();
+
+			case WEEKLY ->
+				today.minusWeeks(1)
+					.atStartOfDay(SEOUL_ZONE)
+					.toInstant();
+
+			case MONTHLY ->
+				today.minusMonths(1)
+					.atStartOfDay(SEOUL_ZONE)
+					.toInstant();
+
 			case ALL_TIME -> Instant.EPOCH;
 		};
+	}
+
+	private int updateDailyPowerRanks(
+		List<PowerUsersDocument.Ranking> rankings,
+		Instant activityDate,
+		Instant now
+	) {
+		List<UserActivityStatsDocument> documents =
+			new ArrayList<>();
+
+		for (PowerUsersDocument.Ranking ranking : rankings) {
+			userActivityStatsRepository
+				.findByUserIdAndActivityDate(
+					ranking.getUserId(),
+					activityDate
+				)
+				.ifPresent(document -> {
+					document.updateDailyPowerRank(
+						ranking.getRank(),
+						now
+					);
+
+					documents.add(document);
+				});
+		}
+
+		if (!documents.isEmpty()) {
+			userActivityStatsRepository.saveAll(documents);
+		}
+
+		return documents.size();
 	}
 }

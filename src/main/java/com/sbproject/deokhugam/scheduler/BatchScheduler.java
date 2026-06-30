@@ -1,6 +1,5 @@
 package com.sbproject.deokhugam.scheduler;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
@@ -19,15 +18,18 @@ public class BatchScheduler {
     private final JobLauncher jobLauncher;
     private final Job notificationDeleteJob;
 	private final Job rankingJob;
+	private final Job userActivityStatsJob;
 
     public BatchScheduler(
             JobLauncher jobLauncher,
             @Qualifier("notificationDeleteJob") Job notificationDeleteJob,
-			@Qualifier("rankingJob") Job rankingJob) {
+			@Qualifier("rankingJob") Job rankingJob,
+			@Qualifier("userActivityStatsJob") Job userActivityStatsJob) {
 
         this.jobLauncher = jobLauncher;
         this.notificationDeleteJob = notificationDeleteJob;
 		this.rankingJob = rankingJob;
+		this.userActivityStatsJob = userActivityStatsJob;
 
     }
 
@@ -62,9 +64,22 @@ public class BatchScheduler {
 				.addLong("timestamp", System.currentTimeMillis())
 				.toJobParameters();
 			jobLauncher.run(rankingJob, parameters);
-			log.info("RankingJob completed.");
 		} catch (Exception e) {
 			log.error("RankingJob failed.", e);
+		}
+	}
+
+	@Scheduled(cron = "0 */5 * * * *", zone = "Asia/Seoul")
+	public void runUserActivityStatsJob() {
+		try {
+			JobParameters parameters = new JobParametersBuilder()
+				.addLong("timestamp", System.currentTimeMillis())
+				.toJobParameters();
+
+			jobLauncher.run(userActivityStatsJob, parameters);
+
+		} catch (Exception e) {
+			log.error("UserActivityStatsJob failed.", e);
 		}
 	}
 }
