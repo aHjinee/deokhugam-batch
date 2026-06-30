@@ -1,6 +1,5 @@
 package com.sbproject.deokhugam.scheduler;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
@@ -18,16 +17,19 @@ public class BatchScheduler {
 
     private final JobLauncher jobLauncher;
     private final Job notificationDeleteJob;
-	private final Job rankingJob;
+    private final Job rankingJob;
+    private final Job userDeleteJob;
 
     public BatchScheduler(
             JobLauncher jobLauncher,
             @Qualifier("notificationDeleteJob") Job notificationDeleteJob,
-			@Qualifier("rankingJob") Job rankingJob) {
+            @Qualifier("rankingJob") Job rankingJob,
+            @Qualifier("userDeleteJob") Job userDeleteJob) {
 
         this.jobLauncher = jobLauncher;
         this.notificationDeleteJob = notificationDeleteJob;
-		this.rankingJob = rankingJob;
+        this.rankingJob = rankingJob;
+        this.userDeleteJob = userDeleteJob;
 
     }
 
@@ -55,16 +57,32 @@ public class BatchScheduler {
         }
     }
 
-	@Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
-	public void runRankingJob() {
-		try {
-			JobParameters parameters = new JobParametersBuilder()
-				.addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
-			jobLauncher.run(rankingJob, parameters);
-			log.info("RankingJob completed.");
-		} catch (Exception e) {
-			log.error("RankingJob failed.", e);
-		}
-	}
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
+    public void runRankingJob() {
+        try {
+            JobParameters parameters = new JobParametersBuilder()
+                    .addLong("timestamp", System.currentTimeMillis())
+                    .toJobParameters();
+            jobLauncher.run(rankingJob, parameters);
+            log.info("RankingJob completed.");
+        } catch (Exception e) {
+            log.error("RankingJob failed.", e);
+        }
+    }
+
+    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Seoul")
+    public void runUserDeleteJob() {
+        try {
+            JobParameters parameters =
+                    new JobParametersBuilder()
+                            .addLong("timestamp", System.currentTimeMillis())
+                            .toJobParameters();
+
+            jobLauncher.run(userDeleteJob, parameters);
+            log.info("UserDeleteJob completed.");
+
+        } catch (Exception e) {
+            log.error("UserDeleteJob failed.", e);
+        }
+    }
 }
