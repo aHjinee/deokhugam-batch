@@ -3,6 +3,8 @@ package com.sbproject.deokhugam.job.popularreview;
 import com.sbproject.deokhugam.domain.dashboard.document.PopularReviewsDocument;
 import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 import com.sbproject.deokhugam.domain.dashboard.repository.PopularReviewsRepository;
+import com.sbproject.deokhugam.domain.notification.entity.NotificationType;
+import com.sbproject.deokhugam.domain.notification.service.NotificationService;
 import com.sbproject.deokhugam.monitoring.BatchMetrics;
 
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class PopularReviewTasklet implements Tasklet {
 	private final JdbcTemplate jdbcTemplate;
 	private final PopularReviewsRepository popularReviewsRepository;
 	private final BatchMetrics batchMetrics;
+	private final NotificationService notificationService;
 
 
 	@Override
@@ -126,6 +130,23 @@ public class PopularReviewTasklet implements Tasklet {
 					(int) commentCount,
 					((Timestamp) row.get("created_at")).toInstant()
 				));
+			}
+
+			NotificationType notificationType = switch (periodType) {
+				case DAILY -> NotificationType.POPULAR_DAILY;
+				case WEEKLY -> NotificationType.POPULAR_WEEKLY;
+				case MONTHLY -> NotificationType.POPULAR_MONTHLY;
+				case ALL_TIME -> NotificationType.POPULAR_ALL_TIME;
+			};
+
+			for (int i = 0; i < Math.min(10, rankings.size()); i++) {
+				PopularReviewsDocument.Ranking ranking = rankings.get(i);
+
+				notificationService.create(
+						notificationType,
+						UUID.fromString(ranking.getUserId()),
+						UUID.fromString(ranking.getReviewId())
+				);
 			}
 
 			Instant now = Instant.now();
