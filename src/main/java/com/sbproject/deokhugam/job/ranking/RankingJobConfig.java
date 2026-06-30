@@ -1,7 +1,6 @@
-package com.sbproject.deokhugam.config;
+package com.sbproject.deokhugam.job.ranking;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -9,7 +8,8 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-@Slf4j
+import com.sbproject.deokhugam.monitoring.BatchMetricsJobExecutionListener;
+
 @Configuration
 @RequiredArgsConstructor
 public class RankingJobConfig {
@@ -18,11 +18,14 @@ public class RankingJobConfig {
 
 	@Bean
 	public Job rankingJob(
+		JobRepository jobRepository,
 		Step popularReviewStep,
 		Step popularBookStep,
-		Step powerUserStep
+		Step powerUserStep,
+		BatchMetricsJobExecutionListener metricsListener
 	) {
 		return new JobBuilder("rankingJob", jobRepository)
+			.listener(metricsListener)
 			.start(popularReviewStep)
 			.next(popularBookStep)
 			.next(powerUserStep)

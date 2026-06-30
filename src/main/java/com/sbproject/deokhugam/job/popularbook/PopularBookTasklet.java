@@ -3,13 +3,10 @@ package com.sbproject.deokhugam.job.popularbook;
 import com.sbproject.deokhugam.domain.dashboard.document.PopularBooksDocument;
 import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 import com.sbproject.deokhugam.domain.dashboard.repository.PopularBooksRepository;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -24,27 +21,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class PopularBookTasklet implements Tasklet, StepExecutionListener {
+public class PopularBookTasklet implements Tasklet {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final JdbcTemplate jdbcTemplate;
 	private final PopularBooksRepository popularBooksRepository;
+	private final BatchMetrics batchMetrics;
 
 	@Override
-	public void beforeStep(StepExecution stepExecution) {
-		log.info("[PopularBookTasklet] beforeStep");
-	}
-
-	@Override
-	public @Nullable RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-		LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+	public RepeatStatus execute(
+		StepContribution contribution,
+		ChunkContext chunkContext
+	) {
+		LocalDate today = LocalDate.now(SEOUL_ZONE);
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
 			Instant endAt = today.plusDays(1)
-				.atStartOfDay(ZoneId.of("Asia/Seoul"))
+				.atStartOfDay(SEOUL_ZONE)
 				.toInstant();
 
 			Timestamp startTimestamp = Timestamp.from(startAt);
@@ -64,20 +61,29 @@ public class PopularBookTasklet implements Tasklet, StepExecutionListener {
 					AND r.created_at >= ? AND r.created_at < ?
 				WHERE b.deleted_at IS NULL
 				GROUP BY b.id, b.title, b.author, b.thumbnail_url
-				HAVING (COUNT(DISTINCT r.id) * 0.4 + COALESCE(AVG(r.rating), 0) * 0.6) > 0
-				ORDER BY (COUNT(DISTINCT r.id) * 0.4 + COALESCE(AVG(r.rating), 0) * 0.6) DESC
+				HAVING (
+					COUNT(DISTINCT r.id) * 0.4
+					+ COALESCE(AVG(r.rating), 0) * 0.6
+				) > 0
+				ORDER BY (
+					COUNT(DISTINCT r.id) * 0.4
+					+ COALESCE(AVG(r.rating), 0) * 0.6
+				) DESC
 				LIMIT 10
 				""",
-
 				startTimestamp,
 				endTimestamp
 			);
 
 			List<PopularBooksDocument.Ranking> rankings = new ArrayList<>();
+
 			for (int i = 0; i < rows.size(); i++) {
 				Map<String, Object> row = rows.get(i);
-				long reviewCount = ((Number) row.get("review_count")).longValue();
-				double avgRating = ((Number) row.get("avg_rating")).doubleValue();
+
+				long reviewCount =
+					((Number) row.get("review_count")).longValue();
+				double avgRating =
+					((Number) row.get("avg_rating")).doubleValue();
 				double score = reviewCount * 0.4 + avgRating * 0.6;
 
 				rankings.add(new PopularBooksDocument.Ranking(
@@ -85,7 +91,9 @@ public class PopularBookTasklet implements Tasklet, StepExecutionListener {
 					row.get("book_id").toString(),
 					row.get("title").toString(),
 					row.get("author").toString(),
-					row.get("thumbnail_url") != null ? row.get("thumbnail_url").toString() : null,
+					row.get("thumbnail_url") != null
+						? row.get("thumbnail_url").toString()
+						: null,
 					score,
 					(int) reviewCount,
 					avgRating
@@ -93,35 +101,47 @@ public class PopularBookTasklet implements Tasklet, StepExecutionListener {
 			}
 
 			Instant now = Instant.now();
-			popularBooksRepository.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
+			Instant periodDate = today.atStartOfDay(SEOUL_ZONE).toInstant();
+
+			popularBooksRepository
+				.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
 				.ifPresentOrElse(
-					doc -> {
-						doc.update(rankings, now);
-						popularBooksRepository.save(doc);
+					document -> {
+						document.update(rankings, now);
+						popularBooksRepository.save(document);
 					},
 					() -> popularBooksRepository.save(
-						PopularBooksDocument.create(periodType, today.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), rankings, now)
+						PopularBooksDocument.create(
+							periodType,
+							periodDate,
+							rankings,
+							now
+						)
 					)
 				);
 
-			log.info("[PopularBookTasklet] {} 완료, {}건", periodType, rankings.size());
+			batchMetrics.recordProcessedItems(
+				"popularBook",
+				periodType.name(),
+				rankings.size()
+			);
+
+
 		}
 
 		return RepeatStatus.FINISHED;
 	}
 
-	@Override
-	public ExitStatus afterStep(StepExecution stepExecution) {
-		log.info("[PopularBookTasklet] afterStep");
-		return ExitStatus.COMPLETED;
-	}
-
-	private Instant getStartAt(PeriodType periodType, LocalDate today) {
-		ZoneId zone = ZoneId.of("Asia/Seoul");
+	private Instant getStartAt(
+		PeriodType periodType,
+		LocalDate today
+	) {
 		return switch (periodType) {
-			case DAILY -> today.atStartOfDay(zone).toInstant();
-			case WEEKLY -> today.minusWeeks(1).atStartOfDay(zone).toInstant();
-			case MONTHLY -> today.minusMonths(1).atStartOfDay(zone).toInstant();
+			case DAILY -> today.atStartOfDay(SEOUL_ZONE).toInstant();
+			case WEEKLY ->
+				today.minusWeeks(1).atStartOfDay(SEOUL_ZONE).toInstant();
+			case MONTHLY ->
+				today.minusMonths(1).atStartOfDay(SEOUL_ZONE).toInstant();
 			case ALL_TIME -> Instant.EPOCH;
 		};
 	}

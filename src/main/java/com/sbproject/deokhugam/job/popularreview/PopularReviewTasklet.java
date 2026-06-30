@@ -3,13 +3,10 @@ package com.sbproject.deokhugam.job.popularreview;
 import com.sbproject.deokhugam.domain.dashboard.document.PopularReviewsDocument;
 import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 import com.sbproject.deokhugam.domain.dashboard.repository.PopularReviewsRepository;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -24,27 +21,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
+public class PopularReviewTasklet implements Tasklet {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final JdbcTemplate jdbcTemplate;
 	private final PopularReviewsRepository popularReviewsRepository;
+	private final BatchMetrics batchMetrics;
+
 
 	@Override
-	public void beforeStep(StepExecution stepExecution) {
-		log.info("[PopularReviewTasklet] beforeStep");
-	}
-
-	@Override
-	public @Nullable RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-		LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+	public RepeatStatus execute(
+		StepContribution contribution,
+		ChunkContext chunkContext
+	) {
+		LocalDate today = LocalDate.now(SEOUL_ZONE);
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
 			Instant endAt = today.plusDays(1)
-				.atStartOfDay(ZoneId.of("Asia/Seoul"))
+				.atStartOfDay(SEOUL_ZONE)
 				.toInstant();
 
 			Timestamp startTimestamp = Timestamp.from(startAt);
@@ -52,8 +50,7 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 
 			List<Map<String, Object>> rows = jdbcTemplate.queryForList(
 				"""
-				
-					SELECT
+				SELECT
 					r.id AS review_id,
 					r.user_id,
 					r.book_id,
@@ -73,12 +70,26 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 				LEFT JOIN comments c ON c.review_id = r.id
 					AND c.created_at >= ? AND c.created_at < ?
 				WHERE r.deleted_at IS NULL
-				GROUP BY r.id, r.user_id, r.book_id, u.nickname, b.title, b.thumbnail_url, r.content, r.rating
-				HAVING (COUNT(DISTINCT rl.id) * 0.3 + COUNT(DISTINCT c.id) * 0.7) > 0
-				ORDER BY (COUNT(DISTINCT rl.id) * 0.3 + COUNT(DISTINCT c.id) * 0.7) DESC
+				GROUP BY
+					r.id,
+					r.user_id,
+					r.book_id,
+					u.nickname,
+					b.title,
+					b.thumbnail_url,
+					r.content,
+					r.rating,
+					r.created_at
+				HAVING (
+					COUNT(DISTINCT rl.id) * 0.3
+					+ COUNT(DISTINCT c.id) * 0.7
+				) > 0
+				ORDER BY (
+					COUNT(DISTINCT rl.id) * 0.3
+					+ COUNT(DISTINCT c.id) * 0.7
+				) DESC
 				LIMIT 20
 				""",
-
 				startTimestamp,
 				endTimestamp,
 				startTimestamp,
@@ -86,11 +97,17 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 			);
 
 			List<PopularReviewsDocument.Ranking> rankings = new ArrayList<>();
+
 			for (int i = 0; i < rows.size(); i++) {
 				Map<String, Object> row = rows.get(i);
-				long likeCount = ((Number) row.get("like_count")).longValue();
-				long commentCount = ((Number) row.get("comment_count")).longValue();
-				double score = likeCount * 0.3 + commentCount * 0.7;
+
+				long likeCount =
+					((Number) row.get("like_count")).longValue();
+				long commentCount =
+					((Number) row.get("comment_count")).longValue();
+
+				double score =
+					likeCount * 0.3 + commentCount * 0.7;
 
 				rankings.add(new PopularReviewsDocument.Ranking(
 					i + 1,
@@ -99,7 +116,9 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 					row.get("book_id").toString(),
 					row.get("nickname").toString(),
 					row.get("title").toString(),
-					row.get("thumbnail_url") != null ? row.get("thumbnail_url").toString() : null,
+					row.get("thumbnail_url") != null
+						? row.get("thumbnail_url").toString()
+						: null,
 					row.get("content").toString(),
 					((Number) row.get("rating")).doubleValue(),
 					score,
@@ -110,35 +129,49 @@ public class PopularReviewTasklet implements Tasklet, StepExecutionListener {
 			}
 
 			Instant now = Instant.now();
-			popularReviewsRepository.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
+			Instant periodDate = today
+				.atStartOfDay(SEOUL_ZONE)
+				.toInstant();
+
+			popularReviewsRepository
+				.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
 				.ifPresentOrElse(
-					doc -> {
-						doc.update(rankings, now);
-						popularReviewsRepository.save(doc);
+					document -> {
+						document.update(rankings, now);
+						popularReviewsRepository.save(document);
 					},
 					() -> popularReviewsRepository.save(
-						PopularReviewsDocument.create(periodType, today.atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(), rankings, now)
+						PopularReviewsDocument.create(
+							periodType,
+							periodDate,
+							rankings,
+							now
+						)
 					)
 				);
 
-			log.info("[PopularReviewTasklet] {} 완료, {}건", periodType, rankings.size());
+			batchMetrics.recordProcessedItems(
+				"popularReview",
+				periodType.name(),
+				rankings.size()
+			);
+
 		}
 
 		return RepeatStatus.FINISHED;
 	}
 
-	@Override
-	public ExitStatus afterStep(StepExecution stepExecution) {
-		log.info("[PopularReviewTasklet] afterStep");
-		return ExitStatus.COMPLETED;
-	}
-
-	private Instant getStartAt(PeriodType periodType, LocalDate today) {
-		ZoneId zone = ZoneId.of("Asia/Seoul");
+	private Instant getStartAt(
+		PeriodType periodType,
+		LocalDate today
+	) {
 		return switch (periodType) {
-			case DAILY -> today.atStartOfDay(zone).toInstant();
-			case WEEKLY -> today.minusWeeks(1).atStartOfDay(zone).toInstant();
-			case MONTHLY -> today.minusMonths(1).atStartOfDay(zone).toInstant();
+			case DAILY ->
+				today.atStartOfDay(SEOUL_ZONE).toInstant();
+			case WEEKLY ->
+				today.minusWeeks(1).atStartOfDay(SEOUL_ZONE).toInstant();
+			case MONTHLY ->
+				today.minusMonths(1).atStartOfDay(SEOUL_ZONE).toInstant();
 			case ALL_TIME -> Instant.EPOCH;
 		};
 	}
