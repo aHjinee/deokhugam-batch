@@ -74,10 +74,12 @@ public class UserActivityStatsTasklet implements Tasklet {
 				ON my_r.user_id = u.id
 			LEFT JOIN comments rc
 				ON rc.review_id = my_r.id
+				AND rc.user_id <> u.id
 				AND rc.created_at >= ?
 				AND rc.created_at < ?
 			LEFT JOIN review_likes rrl
 				ON rrl.review_id = my_r.id
+				AND rrl.user_id <> u.id
 				AND rrl.created_at >= ?
 				AND rrl.created_at < ?
 			WHERE u.deleted_at IS NULL
