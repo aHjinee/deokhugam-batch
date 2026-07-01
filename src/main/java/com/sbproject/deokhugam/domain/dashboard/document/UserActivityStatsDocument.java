@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.TypeAlias;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -13,6 +14,11 @@ import java.time.Instant;
 @NoArgsConstructor
 @TypeAlias("userActivityStats")
 @Document(collection = "user_activity_stats")
+@CompoundIndex(
+	name = "uk_user_activity_date",
+	def = "{'user_id': 1, 'activity_date': 1}",
+	unique = true
+)
 public class UserActivityStatsDocument {
 
   @Id
