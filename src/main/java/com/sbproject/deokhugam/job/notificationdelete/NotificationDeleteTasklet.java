@@ -1,38 +1,30 @@
 package com.sbproject.deokhugam.job.notificationdelete;
 
 import com.sbproject.deokhugam.domain.notification.service.NotificationService;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 
-@Slf4j
 @RequiredArgsConstructor
-public class NotificationDeleteTasklet implements Tasklet, StepExecutionListener {
+public class NotificationDeleteTasklet implements Tasklet {
 
     private final NotificationService notificationService;
+	private final BatchMetrics batchMetrics;
 
-    @Override
-    public void beforeStep(StepExecution stepExecution) {
-        log.info("[NotificationDeleteTasklet] beforeStep");
-    }
 
     @Override
     public @Nullable RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         int deletedCount = notificationService.deleteExpiredConfirmedNotifications();
-        log.info("[NotificationDeleteTasklet] deletedCount: {}", deletedCount);
+		batchMetrics.recordProcessedItems(
+			"notificationDelete",
+			"ALL",
+			deletedCount
+		);
         return RepeatStatus.FINISHED;
     }
 
-    @Override
-    public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("[NotificationDeleteTasklet] afterStep");
-        return ExitStatus.COMPLETED;
-    }
 }
