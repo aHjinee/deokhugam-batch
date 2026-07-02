@@ -48,9 +48,7 @@ public class PowerUserTasklet implements Tasklet {
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
-			Instant endAt = today.plusDays(1)
-				.atStartOfDay(SEOUL_ZONE)
-				.toInstant();
+			Instant endAt = getEndAt(today);
 
 			Timestamp startTimestamp = Timestamp.from(startAt);
 			Timestamp endTimestamp = Timestamp.from(endAt);
@@ -221,7 +219,7 @@ public class PowerUserTasklet implements Tasklet {
 	) {
 		return switch (periodType) {
 			case DAILY ->
-				today.atStartOfDay(SEOUL_ZONE).toInstant();
+				today.minusDays(1).atStartOfDay(SEOUL_ZONE).toInstant();
 
 			case WEEKLY ->
 				today.minusWeeks(1)
@@ -235,6 +233,10 @@ public class PowerUserTasklet implements Tasklet {
 
 			case ALL_TIME -> Instant.EPOCH;
 		};
+	}
+
+	private Instant getEndAt(LocalDate today) {
+		return today.atStartOfDay(SEOUL_ZONE).toInstant();
 	}
 
 	private int updateDailyPowerRanks(
