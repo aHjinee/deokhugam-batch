@@ -54,9 +54,7 @@ public class PopularBookTasklet implements Tasklet {
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
-			Instant endAt = today.plusDays(1)
-				.atStartOfDay(SEOUL_ZONE)
-				.toInstant();
+			Instant endAt = getEndAt(today);
 
 			Timestamp startTimestamp = Timestamp.from(startAt);
 			Timestamp endTimestamp = Timestamp.from(endAt);
@@ -169,10 +167,8 @@ public class PopularBookTasklet implements Tasklet {
 			HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(url))
 				.timeout(Duration.ofSeconds(1))
-				.method(
-					"HEAD",
-					HttpRequest.BodyPublishers.noBody()
-				)
+				.header("Range", "bytes=0-0")
+				.GET()
 				.build();
 
 			HttpResponse<Void> response =
@@ -183,15 +179,14 @@ public class PopularBookTasklet implements Tasklet {
 
 			int statusCode = response.statusCode();
 
-			if (statusCode >= 200 && statusCode < 400) {
+			// 200(Range 미지원 시 전체 응답) 또는 206(Partial Content) 모두 정상
+			if (statusCode == 200 || statusCode == 206) {
 				return url;
 			}
-
 
 			return null;
 
 		} catch (Exception e) {
-
 			return null;
 		}
 	}
@@ -201,12 +196,16 @@ public class PopularBookTasklet implements Tasklet {
 		LocalDate today
 	) {
 		return switch (periodType) {
-			case DAILY -> today.atStartOfDay(SEOUL_ZONE).toInstant();
+			case DAILY -> today.minusDays(1).atStartOfDay(SEOUL_ZONE).toInstant();
 			case WEEKLY ->
 				today.minusWeeks(1).atStartOfDay(SEOUL_ZONE).toInstant();
 			case MONTHLY ->
 				today.minusMonths(1).atStartOfDay(SEOUL_ZONE).toInstant();
 			case ALL_TIME -> Instant.EPOCH;
 		};
+	}
+
+	private Instant getEndAt(LocalDate today) {
+		return today.atStartOfDay(SEOUL_ZONE).toInstant();
 	}
 }
