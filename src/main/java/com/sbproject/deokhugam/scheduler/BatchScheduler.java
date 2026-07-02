@@ -15,83 +15,57 @@ import org.springframework.scheduling.annotation.Scheduled;
 @EnableScheduling
 public class BatchScheduler {
 
-	private final JobLauncher jobLauncher;
-	private final Job notificationDeleteJob;
-	private final Job rankingJob;
-	private final Job userActivityStatsJob;
-	private final Job userDeleteJob;
+    private final JobLauncher jobLauncher;
+    private final Job notificationDeleteJob;
+    private final Job rankingJob;
+    private final Job userActivityStatsJob;
+    private final Job userDeleteJob;
 
-	public BatchScheduler(
-		JobLauncher jobLauncher,
-		@Qualifier("notificationDeleteJob") Job notificationDeleteJob,
-		@Qualifier("rankingJob") Job rankingJob,
-		@Qualifier("userActivityStatsJob") Job userActivityStatsJob,
-		@Qualifier("userDeleteJob") Job userDeleteJob
-	) {
-		this.jobLauncher = jobLauncher;
-		this.notificationDeleteJob = notificationDeleteJob;
-		this.rankingJob = rankingJob;
-		this.userActivityStatsJob = userActivityStatsJob;
-		this.userDeleteJob = userDeleteJob;
-	}
+    public BatchScheduler(
+            JobLauncher jobLauncher,
+            @Qualifier("notificationDeleteJob") Job notificationDeleteJob,
+            @Qualifier("rankingJob") Job rankingJob,
+            @Qualifier("userActivityStatsJob") Job userActivityStatsJob,
+            @Qualifier("userDeleteJob") Job userDeleteJob) {
 
-	@Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
-	public void runNotificationDeleteJob() {
-		try {
-			JobParameters parameters = new JobParametersBuilder()
-				.addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
+        this.jobLauncher = jobLauncher;
+        this.notificationDeleteJob = notificationDeleteJob;
+        this.rankingJob = rankingJob;
+        this.userActivityStatsJob = userActivityStatsJob;
+        this.userDeleteJob = userDeleteJob;
+    }
 
-			jobLauncher.run(notificationDeleteJob, parameters);
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+    public void runNotificationDeleteJob() {
+        runJob(notificationDeleteJob, "NotificationDeleteJob");
+    }
 
-			log.info("NotificationDeleteJob completed.");
-		} catch (Exception e) {
-			log.error("NotificationDeleteJob failed.", e);
-		}
-	}
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
+    public void runRankingJob() {
+        runJob(rankingJob, "RankingJob");
+    }
 
-	@Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
-	public void runRankingJob() {
-		try {
-			JobParameters parameters = new JobParametersBuilder()
-				.addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
+    @Scheduled(cron = "0 */5 * * * *", zone = "Asia/Seoul")
+    public void runUserActivityStatsJob() {
+        runJob(userActivityStatsJob, "UserActivityStatsJob");
+    }
 
-			jobLauncher.run(rankingJob, parameters);
+    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Seoul")
+    public void runUserDeleteJob() {
+        runJob(userDeleteJob, "UserDeleteJob");
+    }
 
-			log.info("RankingJob completed.");
-		} catch (Exception e) {
-			log.error("RankingJob failed.", e);
-		}
-	}
+    private void runJob(Job job, String jobName) {
+        try {
+            JobParameters parameters = new JobParametersBuilder()
+                    .addLong("timestamp", System.currentTimeMillis())
+                    .toJobParameters();
 
-	@Scheduled(cron = "0 */5 * * * *", zone = "Asia/Seoul")
-	public void runUserActivityStatsJob() {
-		try {
-			JobParameters parameters = new JobParametersBuilder()
-				.addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
+            jobLauncher.run(job, parameters);
+            log.info("{} completed.", jobName);
 
-			jobLauncher.run(userActivityStatsJob, parameters);
-
-			log.info("UserActivityStatsJob completed.");
-		} catch (Exception e) {
-			log.error("UserActivityStatsJob failed.", e);
-		}
-	}
-
-	@Scheduled(cron = "0 0 2 * * *", zone = "Asia/Seoul")
-	public void runUserDeleteJob() {
-		try {
-			JobParameters parameters = new JobParametersBuilder()
-				.addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
-
-			jobLauncher.run(userDeleteJob, parameters);
-
-			log.info("UserDeleteJob completed.");
-		} catch (Exception e) {
-			log.error("UserDeleteJob failed.", e);
-		}
-	}
+        } catch (Exception e) {
+            log.error("{} failed.", jobName, e);
+        }
+    }
 }
