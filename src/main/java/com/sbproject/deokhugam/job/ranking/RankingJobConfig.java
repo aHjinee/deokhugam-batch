@@ -14,8 +14,6 @@ import com.sbproject.deokhugam.monitoring.BatchMetricsJobExecutionListener;
 @RequiredArgsConstructor
 public class RankingJobConfig {
 
-	private final JobRepository jobRepository;
-
 	@Bean
 	public Job rankingJob(
 		JobRepository jobRepository,

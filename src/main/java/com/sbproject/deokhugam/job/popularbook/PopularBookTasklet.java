@@ -13,13 +13,21 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 
 @Component
 @RequiredArgsConstructor
@@ -31,12 +39,18 @@ public class PopularBookTasklet implements Tasklet {
 	private final PopularBooksRepository popularBooksRepository;
 	private final BatchMetrics batchMetrics;
 
+	private final HttpClient httpClient = HttpClient.newBuilder()
+		.connectTimeout(Duration.ofSeconds(1))
+		.followRedirects(HttpClient.Redirect.NORMAL)
+		.build();
+
 	@Override
 	public RepeatStatus execute(
 		StepContribution contribution,
 		ChunkContext chunkContext
 	) {
 		LocalDate today = LocalDate.now(SEOUL_ZONE);
+		Map<String, Optional<String>> validatedUrlCache = new HashMap<>();
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
@@ -82,18 +96,33 @@ public class PopularBookTasklet implements Tasklet {
 
 				long reviewCount =
 					((Number) row.get("review_count")).longValue();
+
 				double avgRating =
 					((Number) row.get("avg_rating")).doubleValue();
-				double score = reviewCount * 0.4 + avgRating * 0.6;
+
+				double score =
+					reviewCount * 0.4 + avgRating * 0.6;
+
+				String rawThumbnailUrl =
+					row.get("thumbnail_url") != null
+						? row.get("thumbnail_url").toString()
+						: null;
+
+				String thumbnailUrl = rawThumbnailUrl == null
+					? null
+					: validatedUrlCache
+					.computeIfAbsent(
+						rawThumbnailUrl,
+						url -> Optional.ofNullable(validateThumbnailUrl(url))
+					)
+					.orElse(null);
 
 				rankings.add(new PopularBooksDocument.Ranking(
 					i + 1,
 					row.get("book_id").toString(),
 					row.get("title").toString(),
 					row.get("author").toString(),
-					row.get("thumbnail_url") != null
-						? row.get("thumbnail_url").toString()
-						: null,
+					thumbnailUrl,
 					score,
 					(int) reviewCount,
 					avgRating
@@ -101,7 +130,8 @@ public class PopularBookTasklet implements Tasklet {
 			}
 
 			Instant now = Instant.now();
-			Instant periodDate = today.atStartOfDay(SEOUL_ZONE).toInstant();
+			Instant periodDate =
+				today.atStartOfDay(SEOUL_ZONE).toInstant();
 
 			popularBooksRepository
 				.findTopByPeriodTypeOrderByPeriodDateDesc(periodType)
@@ -125,11 +155,45 @@ public class PopularBookTasklet implements Tasklet {
 				periodType.name(),
 				rankings.size()
 			);
-
-
 		}
 
 		return RepeatStatus.FINISHED;
+	}
+
+	private String validateThumbnailUrl(String url) {
+		if (url == null || url.isBlank()) {
+			return null;
+		}
+
+		try {
+			HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(url))
+				.timeout(Duration.ofSeconds(1))
+				.method(
+					"HEAD",
+					HttpRequest.BodyPublishers.noBody()
+				)
+				.build();
+
+			HttpResponse<Void> response =
+				httpClient.send(
+					request,
+					HttpResponse.BodyHandlers.discarding()
+				);
+
+			int statusCode = response.statusCode();
+
+			if (statusCode >= 200 && statusCode < 400) {
+				return url;
+			}
+
+
+			return null;
+
+		} catch (Exception e) {
+
+			return null;
+		}
 	}
 
 	private Instant getStartAt(
