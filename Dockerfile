@@ -28,8 +28,8 @@ WORKDIR /app
 # 빌드 스테이지에서 jar 파일만 복사
 COPY --from=builder /app/build/libs/*.jar /app/app.jar
 
-# 8080 포트 노출
-EXPOSE 8080
+# 8081 포트 노출
+EXPOSE 8081
 
 # jar 파일 실행
 ENTRYPOINT ["sh","-c","java $JVM_OPTS -jar /app/app.jar"]
