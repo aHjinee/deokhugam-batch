@@ -175,7 +175,7 @@ public class PowerUserTasklet implements Tasklet {
 			if (periodType == PeriodType.DAILY) {
 				updatedActivityStatsCount = updateDailyPowerRanks(
 					rankings,
-					periodDate,
+					today.minusDays(1).atStartOfDay(SEOUL_ZONE).toInstant(),
 					now
 				);
 			}
@@ -213,32 +213,6 @@ public class PowerUserTasklet implements Tasklet {
 		return RepeatStatus.FINISHED;
 	}
 
-	private Instant getStartAt(
-		PeriodType periodType,
-		LocalDate today
-	) {
-		return switch (periodType) {
-			case DAILY ->
-				today.minusDays(1).atStartOfDay(SEOUL_ZONE).toInstant();
-
-			case WEEKLY ->
-				today.minusWeeks(1)
-					.atStartOfDay(SEOUL_ZONE)
-					.toInstant();
-
-			case MONTHLY ->
-				today.minusMonths(1)
-					.atStartOfDay(SEOUL_ZONE)
-					.toInstant();
-
-			case ALL_TIME -> Instant.EPOCH;
-		};
-	}
-
-	private Instant getEndAt(LocalDate today) {
-		return today.atStartOfDay(SEOUL_ZONE).toInstant();
-	}
-
 	private int updateDailyPowerRanks(
 		List<PowerUsersDocument.Ranking> rankings,
 		Instant activityDate,
@@ -268,5 +242,31 @@ public class PowerUserTasklet implements Tasklet {
 		}
 
 		return documents.size();
+	}
+
+	private Instant getStartAt(
+		PeriodType periodType,
+		LocalDate today
+	) {
+		return switch (periodType) {
+			case DAILY ->
+				today.minusDays(1).atStartOfDay(SEOUL_ZONE).toInstant();
+
+			case WEEKLY ->
+				today.minusWeeks(1)
+					.atStartOfDay(SEOUL_ZONE)
+					.toInstant();
+
+			case MONTHLY ->
+				today.minusMonths(1)
+					.atStartOfDay(SEOUL_ZONE)
+					.toInstant();
+
+			case ALL_TIME -> Instant.EPOCH;
+		};
+	}
+
+	private Instant getEndAt(LocalDate today) {
+		return today.atStartOfDay(SEOUL_ZONE).toInstant();
 	}
 }
