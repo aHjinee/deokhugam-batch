@@ -105,5 +105,5 @@ jobs:
             --cluster "${{ vars.ECS_CLUSTER }}" \
             --service "${{ vars.ECS_SERVICE }}" \
             --task-definition "$NEW_TASK_DEF_ARN" \
-            --desired-count 2 \
+            --desired-count 1 \
             --force-new-deployment
