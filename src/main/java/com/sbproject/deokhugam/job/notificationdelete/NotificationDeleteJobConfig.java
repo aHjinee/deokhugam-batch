@@ -1,11 +1,5 @@
 package com.sbproject.deokhugam.job.notificationdelete;
 
-
-import com.sbproject.deokhugam.domain.notification.service.NotificationService;
-import com.sbproject.deokhugam.monitoring.BatchMetrics;
-import com.sbproject.deokhugam.monitoring.BatchMetricsJobExecutionListener;
-
-import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -15,6 +9,12 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+
+import com.sbproject.deokhugam.domain.notification.service.NotificationService;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
+import com.sbproject.deokhugam.monitoring.BatchMetricsJobExecutionListener;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableBatchProcessing

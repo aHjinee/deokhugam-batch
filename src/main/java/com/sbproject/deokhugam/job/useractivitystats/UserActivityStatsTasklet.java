@@ -1,10 +1,12 @@
 package com.sbproject.deokhugam.job.useractivitystats;
 
-import com.sbproject.deokhugam.domain.dashboard.document.UserActivityStatsDocument;
-import com.sbproject.deokhugam.domain.dashboard.repository.UserActivityStatsRepository;
-import com.sbproject.deokhugam.monitoring.BatchMetrics;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
@@ -12,12 +14,11 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
+import com.sbproject.deokhugam.domain.dashboard.document.UserActivityStatsDocument;
+import com.sbproject.deokhugam.domain.dashboard.repository.UserActivityStatsRepository;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

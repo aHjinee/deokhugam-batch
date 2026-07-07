@@ -1,18 +1,20 @@
 package com.sbproject.deokhugam.domain.notification.repository;
 
-import com.querydsl.core.BooleanBuilder;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.sbproject.deokhugam.domain.notification.entity.Notification;
-import com.sbproject.deokhugam.domain.notification.entity.QNotification;
-import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.sbproject.deokhugam.domain.notification.entity.Notification;
+import com.sbproject.deokhugam.domain.notification.entity.QNotification;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

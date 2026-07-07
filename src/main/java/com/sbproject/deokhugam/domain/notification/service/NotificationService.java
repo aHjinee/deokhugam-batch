@@ -1,20 +1,21 @@
 package com.sbproject.deokhugam.domain.notification.service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sbproject.deokhugam.domain.notification.entity.Notification;
 import com.sbproject.deokhugam.domain.notification.entity.NotificationType;
-import com.sbproject.deokhugam.domain.notification.repository.NotificationQueryRepository;
 import com.sbproject.deokhugam.domain.notification.repository.NotificationRepository;
 import com.sbproject.deokhugam.domain.review.entity.Review;
 import com.sbproject.deokhugam.domain.review.repository.ReviewRepository;
 import com.sbproject.deokhugam.domain.user.entity.User;
 import com.sbproject.deokhugam.domain.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

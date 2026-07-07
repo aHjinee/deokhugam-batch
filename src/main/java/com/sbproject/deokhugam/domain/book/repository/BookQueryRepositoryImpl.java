@@ -1,7 +1,8 @@
 package com.sbproject.deokhugam.domain.book.repository;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor

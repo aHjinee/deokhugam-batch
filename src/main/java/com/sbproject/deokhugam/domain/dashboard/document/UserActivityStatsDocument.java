@@ -1,14 +1,15 @@
 package com.sbproject.deokhugam.domain.dashboard.document;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import java.time.Instant;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.Instant;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor

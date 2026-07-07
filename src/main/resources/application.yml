@@ -97,7 +97,7 @@ management:
     build:
       enabled: true
 
-myblog:
+deokhugam:
   storage:
     local:
-      root-path: .blog/storage  # dev 로컬 파일 저장 루트 (프로젝트 루트 기준)
+      root-path: .deokhugam/storage  # dev 로컬 파일 저장 루트 (프로젝트 루트 기준)

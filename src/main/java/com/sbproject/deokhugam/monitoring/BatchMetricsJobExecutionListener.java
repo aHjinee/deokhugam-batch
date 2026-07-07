@@ -1,12 +1,13 @@
 package com.sbproject.deokhugam.monitoring;
 
-import lombok.RequiredArgsConstructor;
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor

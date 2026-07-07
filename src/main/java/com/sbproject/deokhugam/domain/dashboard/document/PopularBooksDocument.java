@@ -1,15 +1,17 @@
 package com.sbproject.deokhugam.domain.dashboard.document;
-import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.Instant;
-import java.util.List;
+import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
