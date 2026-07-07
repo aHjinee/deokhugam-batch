@@ -1,5 +1,4 @@
 package com.sbproject.deokhugam.domain.review.entity;
-import com.sbproject.deokhugam.domain.user.entity.User;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,6 +9,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.uuid.Generators;
+import com.sbproject.deokhugam.domain.user.entity.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

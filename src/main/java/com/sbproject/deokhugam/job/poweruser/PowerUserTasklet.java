@@ -1,5 +1,21 @@
 package com.sbproject.deokhugam.job.poweruser;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
 import com.sbproject.deokhugam.domain.dashboard.document.PopularReviewsDocument;
 import com.sbproject.deokhugam.domain.dashboard.document.PowerUsersDocument;
 import com.sbproject.deokhugam.domain.dashboard.document.UserActivityStatsDocument;
@@ -10,21 +26,6 @@ import com.sbproject.deokhugam.domain.dashboard.repository.UserActivityStatsRepo
 import com.sbproject.deokhugam.monitoring.BatchMetrics;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.scope.context.ChunkContext;
-import org.springframework.batch.core.step.tasklet.Tasklet;
-import org.springframework.batch.repeat.RepeatStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
-
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
