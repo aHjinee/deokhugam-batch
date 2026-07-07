@@ -1,11 +1,13 @@
 package com.sbproject.deokhugam.job.popularbook;
 
-import com.sbproject.deokhugam.domain.dashboard.document.PopularBooksDocument;
-import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
-import com.sbproject.deokhugam.domain.dashboard.repository.PopularBooksRepository;
-import com.sbproject.deokhugam.monitoring.BatchMetrics;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
@@ -13,21 +15,12 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import com.sbproject.deokhugam.domain.dashboard.document.PopularBooksDocument;
+import com.sbproject.deokhugam.domain.dashboard.entity.PeriodType;
+import com.sbproject.deokhugam.domain.dashboard.repository.PopularBooksRepository;
+import com.sbproject.deokhugam.monitoring.BatchMetrics;
 
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -39,18 +32,12 @@ public class PopularBookTasklet implements Tasklet {
 	private final PopularBooksRepository popularBooksRepository;
 	private final BatchMetrics batchMetrics;
 
-	private final HttpClient httpClient = HttpClient.newBuilder()
-		.connectTimeout(Duration.ofSeconds(1))
-		.followRedirects(HttpClient.Redirect.NORMAL)
-		.build();
-
 	@Override
 	public RepeatStatus execute(
 		StepContribution contribution,
 		ChunkContext chunkContext
 	) {
 		LocalDate today = LocalDate.now(SEOUL_ZONE);
-		Map<String, Optional<String>> validatedUrlCache = new HashMap<>();
 
 		for (PeriodType periodType : PeriodType.values()) {
 			Instant startAt = getStartAt(periodType, today);
@@ -101,19 +88,11 @@ public class PopularBookTasklet implements Tasklet {
 				double score =
 					reviewCount * 0.4 + avgRating * 0.6;
 
-				String rawThumbnailUrl =
+				// thumbnail_url 은 스토리지 키를 그대로 저장. URL 변환은 조회(API) 쪽에서 getUrl 로 처리.
+				String thumbnailUrl =
 					row.get("thumbnail_url") != null
 						? row.get("thumbnail_url").toString()
 						: null;
-
-				String thumbnailUrl = rawThumbnailUrl == null
-					? null
-					: validatedUrlCache
-					.computeIfAbsent(
-						rawThumbnailUrl,
-						url -> Optional.ofNullable(validateThumbnailUrl(url))
-					)
-					.orElse(null);
 
 				rankings.add(new PopularBooksDocument.Ranking(
 					i + 1,
@@ -156,39 +135,6 @@ public class PopularBookTasklet implements Tasklet {
 		}
 
 		return RepeatStatus.FINISHED;
-	}
-
-	private String validateThumbnailUrl(String url) {
-		if (url == null || url.isBlank()) {
-			return null;
-		}
-
-		try {
-			HttpRequest request = HttpRequest.newBuilder()
-				.uri(URI.create(url))
-				.timeout(Duration.ofSeconds(1))
-				.header("Range", "bytes=0-0")
-				.GET()
-				.build();
-
-			HttpResponse<Void> response =
-				httpClient.send(
-					request,
-					HttpResponse.BodyHandlers.discarding()
-				);
-
-			int statusCode = response.statusCode();
-
-			// 200(Range 미지원 시 전체 응답) 또는 206(Partial Content) 모두 정상
-			if (statusCode == 200 || statusCode == 206) {
-				return url;
-			}
-
-			return null;
-
-		} catch (Exception e) {
-			return null;
-		}
 	}
 
 	private Instant getStartAt(
